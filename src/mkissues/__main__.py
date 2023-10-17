@@ -1,33 +1,58 @@
 from __future__ import annotations
-import argparse
 import logging
 from pathlib import Path
 import shutil
-from ghrepo import GHRepo
+from typing import IO
+import click
+from ghrepo import GHRepo, get_local_repo
 from ghtoken import get_ghtoken
 from headerparser import HeaderParser
 from .client import Client
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("repository", type=GHRepo.parse)
-    parser.add_argument(
-        "files", nargs="+", type=argparse.FileType("r", encoding="utf-8")
-    )
-    args = parser.parse_args()
-    hp = HeaderParser()
-    hp.add_field("Title", required=True)
-    hp.add_field("Milestone", default=None)
-    hp.add_field("Labels", type=parse_labels, default=())
+class GHRepoParam(click.ParamType):
+    name = "ghrepo"
+
+    def convert(
+        self,
+        value: str | GHRepo,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> GHRepo:
+        if isinstance(value, str):
+            try:
+                return GHRepo.parse(value)
+            except KeyError as e:
+                self.fail(f"{value!r}: {e}", param, ctx)
+        else:
+            return value
+
+    def get_metavar(self, _param: click.Parameter) -> str:
+        return "OWNER/NAME"
+
+
+@click.command()
+@click.option(
+    "-R",
+    "--repository",
+    type=GHRepoParam(),
+    default=get_local_repo,
+    show_default="local repository",
+)
+@click.argument("files", type=click.File(encoding="utf-8"), nargs=-1)
+def main(repository: GHRepo, files: tuple[IO[str], ...]) -> None:
     logging.basicConfig(
         format="[%(levelname)-8s] %(message)s",
         level=logging.INFO,
     )
+    hp = HeaderParser()
+    hp.add_field("Title", required=True)
+    hp.add_field("Milestone", default=None)
+    hp.add_field("Labels", type=parse_labels, default=())
     done_dir = Path("DONE")
     done_dir.mkdir(parents=True, exist_ok=True)
-    with Client(repo=args.repository, token=get_ghtoken()) as client:
-        for fp in args.files:
+    with Client(repo=repository, token=get_ghtoken()) as client:
+        for fp in files:
             with fp:
                 data = hp.parse(fp)
             if data["Milestone"] is not None:
