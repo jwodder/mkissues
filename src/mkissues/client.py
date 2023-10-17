@@ -45,12 +45,25 @@ COLORS = [
 
 
 @dataclass
+class ICaseSet:
+    """A case-insensitive set of strings"""
+
+    data: set[str] = field(init=False, default_factory=set)
+
+    def add(self, s: str) -> None:
+        self.data.add(s.lower())
+
+    def __contains__(self, s: str) -> bool:
+        return s.lower() in self.data
+
+
+@dataclass
 class Client:
     repo: GHRepo
     token: InitVar[str]
     session: requests.Session = field(init=False)
     milestones: set[str] = field(init=False, default_factory=set)
-    labels: set[str] = field(init=False, default_factory=set)
+    labels: ICaseSet = field(init=False, default_factory=ICaseSet)
 
     def __post_init__(self, token: str) -> None:
         self.session = requests.Session()
