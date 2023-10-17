@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 import shutil
 import click
+from click_loglevel import LogLevel
 from ghrepo import GHRepo, get_local_repo
 from ghtoken import get_ghtoken
 from headerparser import HeaderParser
@@ -28,6 +29,14 @@ log = logging.getLogger(__name__)
     help="Move processed files to the given directory  [default: DONE]",
 )
 @click.option(
+    "-l",
+    "--log-level",
+    type=LogLevel(),
+    default="INFO",
+    help="Set logging level",
+    show_default=True,
+)
+@click.option(
     "-R",
     "--repository",
     help=(
@@ -42,7 +51,11 @@ log = logging.getLogger(__name__)
     nargs=-1,
 )
 def main(
-    repository: str | None, files: tuple[Path, ...], delete: bool, done_dir: Path | None
+    repository: str | None,
+    files: tuple[Path, ...],
+    delete: bool,
+    done_dir: Path | None,
+    log_level: int,
 ) -> None:
     """
     Create GitHub issues from text files.
@@ -53,7 +66,7 @@ def main(
         raise click.UsageError("--delete and --done-dir are mutually exclusive")
     logging.basicConfig(
         format="[%(levelname)-8s] %(message)s",
-        level=logging.INFO,
+        level=log_level,
     )
     hp = HeaderParser()
     hp.add_field("Title", required=True)

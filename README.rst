@@ -81,6 +81,12 @@ Options
                                 This option is mutually exclusive with
                                 ``--delete``.
 
+-l LEVEL, --log-level LEVEL     Set the log level to the given value.  Possible
+                                values are "``CRITICAL``", "``ERROR``",
+                                "``WARNING``", "``INFO``", "``DEBUG``" (all
+                                case-insensitive) and their Python integer
+                                equivalents.  [default: ``INFO``]
+
 -R SPEC, --repository SPEC      Operate on the specified GitHub repository.  A
                                 repository can be specified in the form
                                 ``OWNER/NAME`` (or, when ``OWNER`` is the
