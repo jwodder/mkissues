@@ -4,8 +4,8 @@
           yet, or the repository is only intended to be a limited example,
           demo, or proof-of-concept.
 
-.. image:: https://github.com/jwodder/mkissues/workflows/Test/badge.svg?branch=master
-    :target: https://github.com/jwodder/mkissues/actions?workflow=Test
+.. image:: https://github.com/jwodder/mkissues/actions/workflows/test.yml/badge.svg
+    :target: https://github.com/jwodder/mkissues/actions/workflows/test.yml
     :alt: CI Status
 
 .. image:: https://img.shields.io/github/license/jwodder/mkissues.svg
