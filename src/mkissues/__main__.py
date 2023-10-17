@@ -10,6 +10,8 @@ from headerparser import HeaderParser
 from . import __version__
 from .client import Client
 
+log = logging.getLogger(__name__)
+
 
 class GHRepoParam(click.ParamType):
     name = "ghrepo"
@@ -66,6 +68,7 @@ def main(repository: GHRepo, files: tuple[IO[str], ...]) -> None:
     done_dir.mkdir(parents=True, exist_ok=True)
     with Client(repo=repository, token=get_ghtoken()) as client:
         for fp in files:
+            log.info("Processing %s ...", fp.name)
             with fp:
                 data = hp.parse(fp)
             if data["Milestone"] is not None:

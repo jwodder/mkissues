@@ -58,10 +58,10 @@ class Client:
         self.session.headers["Authorization"] = f"bearer {token}"
         self.session.headers["User-Agent"] = USER_AGENT
         self.session.headers["X-GitHub-Api-Version"] = "2022-11-28"
-        log.info("Fetching current milestones for %s ...", self.repo)
+        log.debug("Fetching current milestones for %s ...", self.repo)
         for ms in self.paginate(self.milestone_url):
             self.milestones.add(ms["title"])
-        log.info("Fetching current labels for %s ...", self.repo)
+        log.debug("Fetching current labels for %s ...", self.repo)
         for lbl in self.paginate(self.label_url):
             self.labels.add(lbl["name"])
 
@@ -100,14 +100,14 @@ class Client:
 
     def ensure_milestone(self, title: str) -> None:
         if title not in self.milestones:
-            log.info("Creating milestone %r", title)
+            log.info("Creating milestone %r in %s", title, self.repo)
             r = self.session.post(self.milestone_url, json={"title": title})
             r.raise_for_status()
             self.milestones.add(title)
 
     def ensure_label(self, name: str) -> None:
         if name not in self.labels:
-            log.info("Creating label %r", name)
+            log.info("Creating label %r in %s", name, self.repo)
             payload = {"name": name, "color": random.choice(COLORS)}
             r = self.session.post(self.label_url, json=payload)
             r.raise_for_status()
@@ -116,7 +116,7 @@ class Client:
     def create_issue(
         self, title: str, body: str, labels: Sequence[str], milestone: str | None
     ) -> None:
-        log.info("Creating issue %r", title)
+        log.info("Creating issue %r in %s", title, self.repo)
         payload = {
             "title": title,
             "body": body,
