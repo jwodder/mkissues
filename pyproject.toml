@@ -41,7 +41,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mkissues = "mkissues.__init__:main"
+mkissues = "mkissues.__main__:main"
 
 [project.urls]
 "Source Code" = "https://github.com/jwodder/mkissues"
