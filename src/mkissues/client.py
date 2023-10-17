@@ -4,7 +4,7 @@ from dataclasses import InitVar, dataclass, field
 import logging
 import platform
 import random
-from typing import Any
+from types import TracebackType
 from ghrepo import GHRepo
 import requests
 from . import __url__, __version__
@@ -68,7 +68,12 @@ class Client:
     def __enter__(self) -> Client:
         return self
 
-    def __exit__(self, *_exc: Any) -> None:
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
+    ) -> None:
         self.session.close()
 
     @property
