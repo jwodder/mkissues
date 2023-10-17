@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import InitVar, dataclass, field
+import json
 import logging
 import platform
 import random
@@ -82,7 +83,8 @@ class Client:
     def paginate(self, url: str) -> Iterator:
         while True:
             r = self.session.get(url)
-            r.raise_for_status()
+            if not r.ok:
+                raise PrettyHTTPError(r)
             yield from r.json()
             url2 = r.links.get("next", {}).get("url")
             if url2 is None:
@@ -91,12 +93,14 @@ class Client:
 
     def post(self, url: str, payload: Any) -> Any:
         r = self.session.post(url, json=payload)
-        r.raise_for_status()
+        if not r.ok:
+            raise PrettyHTTPError(r)
         return r.json()
 
     def get_auth_user(self) -> str:
         r = self.session.get("https://api.github.com/user")
-        r.raise_for_status()
+        if not r.ok:
+            raise PrettyHTTPError(r)
         login = r.json()["login"]
         assert isinstance(login, str)
         return login
@@ -145,3 +149,24 @@ class IssueMaker:
         }
         r = self.client.post(f"{self.repo.api_url}/issues", payload)
         log.info("New issue at: %s", r["url"])
+
+
+@dataclass
+class PrettyHTTPError(Exception):
+    response: requests.Response
+
+    def __str__(self) -> str:
+        if 400 <= self.response.status_code < 500:
+            msg = "{0.status_code} Client Error: {0.reason} for URL: {0.url}\n"
+        elif 500 <= self.response.status_code < 600:
+            msg = "{0.status_code} Server Error: {0.reason} for URL: {0.url}\n"
+        else:
+            msg = "{0.status_code} Unknown Error: {0.reason} for URL: {0.url}\n"
+        msg = msg.format(self.response)
+        try:
+            resp = self.response.json()
+        except ValueError:
+            msg += self.response.text
+        else:
+            msg += json.dumps(resp, indent=4)
+        return msg
