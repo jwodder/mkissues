@@ -1,12 +1,4 @@
 from __future__ import annotations
-
-__requires__ = [
-    "ghrepo ~= 0.1",
-    "ghtoken ~= 0.1",
-    "headerparser ~= 0.5.0",
-    "requests ~= 2.20",
-]
-
 import argparse
 from collections.abc import Iterator, Sequence
 from dataclasses import InitVar, dataclass, field
