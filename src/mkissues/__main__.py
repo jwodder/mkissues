@@ -44,10 +44,16 @@ class GHRepoParam(click.ParamType):
     "--repository",
     type=GHRepoParam(),
     default=get_local_repo,
+    help="Create issues in the specified GitHub repository",
     show_default="local repository",
 )
 @click.argument("files", type=click.File(encoding="utf-8"), nargs=-1)
 def main(repository: GHRepo, files: tuple[IO[str], ...]) -> None:
+    """
+    Create GitHub issues from text files.
+
+    Visit <https://github.com/jwodder/mkissues> for more information.
+    """
     logging.basicConfig(
         format="[%(levelname)-8s] %(message)s",
         level=logging.INFO,

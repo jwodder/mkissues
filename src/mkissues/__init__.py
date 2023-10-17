@@ -1,6 +1,9 @@
 """
 Create GitHub issues from text files
 
+``mkissues`` is a command for creating GitHub issues from local Markdown files
+formatted with special headers.
+
 Visit <https://github.com/jwodder/mkissues> for more information.
 """
 
