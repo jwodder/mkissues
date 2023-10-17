@@ -1,3 +1,9 @@
+"""
+Create GitHub issues from text files
+
+Visit <https://github.com/jwodder/mkissues> for more information.
+"""
+
 from __future__ import annotations
 import argparse
 from collections.abc import Iterator, Sequence
@@ -11,6 +17,12 @@ from ghrepo import GHRepo
 from ghtoken import get_ghtoken
 from headerparser import HeaderParser
 import requests
+
+__version__ = "0.1.0.dev"
+__author__ = "John T. Wodder II"
+__author_email__ = "mkissues@varonathe.org"
+__license__ = "MIT"
+__url__ = "https://github.com/jwodder/mkissues"
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +50,7 @@ COLORS = [
 ]
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("repository", type=GHRepo.parse)
     parser.add_argument(
