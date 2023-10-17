@@ -1,17 +1,16 @@
 from __future__ import annotations
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator
 from dataclasses import InitVar, dataclass, field
 import logging
 import platform
 import random
 from types import TracebackType
+from typing import Any
 from ghrepo import GHRepo
 import requests
 from . import __url__, __version__
 
 log = logging.getLogger(__name__)
-
-GITHUB_API_URL = "https://api.github.com"
 
 USER_AGENT = "mkissues/{} ({}) requests/{} {}/{}".format(
     __version__,
@@ -59,11 +58,8 @@ class ICaseSet:
 
 @dataclass
 class Client:
-    repo: GHRepo
     token: InitVar[str]
     session: requests.Session = field(init=False)
-    milestones: set[str] = field(init=False, default_factory=set)
-    labels: ICaseSet = field(init=False, default_factory=ICaseSet)
 
     def __post_init__(self, token: str) -> None:
         self.session = requests.Session()
@@ -71,12 +67,6 @@ class Client:
         self.session.headers["Authorization"] = f"bearer {token}"
         self.session.headers["User-Agent"] = USER_AGENT
         self.session.headers["X-GitHub-Api-Version"] = "2022-11-28"
-        log.debug("Fetching current milestones for %s ...", self.repo)
-        for ms in self.paginate(self.milestone_url):
-            self.milestones.add(ms["title"])
-        log.debug("Fetching current labels for %s ...", self.repo)
-        for lbl in self.paginate(self.label_url):
-            self.labels.add(lbl["name"])
 
     def __enter__(self) -> Client:
         return self
@@ -89,18 +79,6 @@ class Client:
     ) -> None:
         self.session.close()
 
-    @property
-    def repo_url(self) -> str:
-        return f"{GITHUB_API_URL}/repos/{self.repo.owner}/{self.repo.name}"
-
-    @property
-    def milestone_url(self) -> str:
-        return f"{self.repo_url}/milestones"
-
-    @property
-    def label_url(self) -> str:
-        return f"{self.repo_url}/labels"
-
     def paginate(self, url: str) -> Iterator:
         while True:
             r = self.session.get(url)
@@ -111,23 +89,52 @@ class Client:
                 return
             url = url2
 
+    def post(self, url: str, payload: Any) -> Any:
+        r = self.session.post(url, json=payload)
+        r.raise_for_status()
+        return r.json()
+
+    def get_auth_user(self) -> str:
+        r = self.session.get("https://api.github.com/user")
+        r.raise_for_status()
+        login = r.json()["login"]
+        assert isinstance(login, str)
+        return login
+
+    def get_issue_maker(self, repo: GHRepo) -> IssueMaker:
+        log.debug("Fetching current milestones for %s ...", repo)
+        milestones = set()
+        for ms in self.paginate(f"{repo.api_url}/milestones"):
+            milestones.add(ms["title"])
+        log.debug("Fetching current labels for %s ...", repo)
+        labels = ICaseSet()
+        for lbl in self.paginate(f"{repo.api_url}/labels"):
+            labels.add(lbl["name"])
+        return IssueMaker(self, repo, milestones, labels)
+
+
+@dataclass
+class IssueMaker:
+    client: Client
+    repo: GHRepo
+    milestones: set[str]
+    labels: ICaseSet
+
     def ensure_milestone(self, title: str) -> None:
         if title not in self.milestones:
             log.info("Creating milestone %r in %s", title, self.repo)
-            r = self.session.post(self.milestone_url, json={"title": title})
-            r.raise_for_status()
+            self.client.post(f"{self.repo.api_url}/milestones", {"title": title})
             self.milestones.add(title)
 
     def ensure_label(self, name: str) -> None:
         if name not in self.labels:
             log.info("Creating label %r in %s", name, self.repo)
             payload = {"name": name, "color": random.choice(COLORS)}
-            r = self.session.post(self.label_url, json=payload)
-            r.raise_for_status()
+            self.client.post(f"{self.repo.api_url}/labels", payload)
             self.labels.add(name)
 
     def create_issue(
-        self, title: str, body: str, labels: Sequence[str], milestone: str | None
+        self, title: str, body: str, labels: list[str], milestone: str | None
     ) -> None:
         log.info("Creating issue %r in %s", title, self.repo)
         payload = {
@@ -136,7 +143,5 @@ class Client:
             "labels": labels,
             "milestone": milestone,
         }
-        r = self.session.post(f"{self.repo_url}/issues", json=payload)
-        r.raise_for_status()
-        url = r.json()["url"]
-        log.info("New issue at: %s", url)
+        r = self.client.post(f"{self.repo.api_url}/issues", payload)
+        log.info("New issue at: %s", r["url"])

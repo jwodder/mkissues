@@ -12,27 +12,6 @@ from .client import Client
 log = logging.getLogger(__name__)
 
 
-class GHRepoParam(click.ParamType):
-    name = "ghrepo"
-
-    def convert(
-        self,
-        value: str | GHRepo,
-        param: click.Parameter | None,
-        ctx: click.Context | None,
-    ) -> GHRepo:
-        if isinstance(value, str):
-            try:
-                return GHRepo.parse(value)
-            except KeyError as e:
-                self.fail(f"{value!r}: {e}", param, ctx)
-        else:
-            return value
-
-    def get_metavar(self, _param: click.Parameter) -> str:
-        return "OWNER/NAME"
-
-
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(
     __version__,
@@ -51,10 +30,11 @@ class GHRepoParam(click.ParamType):
 @click.option(
     "-R",
     "--repository",
-    type=GHRepoParam(),
-    default=get_local_repo,
-    help="Create issues in the specified GitHub repository",
-    show_default="local repository",
+    help=(
+        "Create issues in the specified GitHub repository"
+        "  [default: local repository]"
+    ),
+    metavar="[OWNER/]NAME",
 )
 @click.argument(
     "files",
@@ -62,7 +42,7 @@ class GHRepoParam(click.ParamType):
     nargs=-1,
 )
 def main(
-    repository: GHRepo, files: tuple[Path, ...], delete: bool, done_dir: Path | None
+    repository: str | None, files: tuple[Path, ...], delete: bool, done_dir: Path | None
 ) -> None:
     """
     Create GitHub issues from text files.
@@ -79,18 +59,23 @@ def main(
     hp.add_field("Title", required=True)
     hp.add_field("Milestone", default=None)
     hp.add_field("Labels", type=parse_labels, default=())
-    if done_dir is not None:
-        done_dir.mkdir(parents=True, exist_ok=True)
-    with Client(repo=repository, token=get_ghtoken()) as client:
+    with Client(token=get_ghtoken()) as client:
+        if repository is None:
+            repo = get_local_repo()
+        else:
+            repo = GHRepo.parse(repository, default_owner=client.get_auth_user)
+        issue_maker = client.get_issue_maker(repo)
+        if done_dir is not None:
+            done_dir.mkdir(parents=True, exist_ok=True)
         for p in files:
             log.info("Processing %s ...", p)
             with p.open(encoding="utf-8") as fp:
                 data = hp.parse(fp)
             if data["Milestone"] is not None:
-                client.ensure_milestone(data["Milestone"])
+                issue_maker.ensure_milestone(data["Milestone"])
             for lbl in data["Labels"]:
-                client.ensure_label(lbl)
-            client.create_issue(
+                issue_maker.ensure_label(lbl)
+            issue_maker.create_issue(
                 title=data["Title"],
                 body=data.body or "",
                 labels=data["Labels"],
