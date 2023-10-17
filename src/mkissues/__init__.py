@@ -10,6 +10,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import InitVar, dataclass, field
 import logging
 from pathlib import Path
+import platform
 import random
 import shutil
 from typing import Any
@@ -27,6 +28,15 @@ __url__ = "https://github.com/jwodder/mkissues"
 log = logging.getLogger(__name__)
 
 GITHUB_API_URL = "https://api.github.com"
+
+USER_AGENT = "mkissues/{} ({}) requests/{} {}/{}".format(
+    __version__,
+    __url__,
+    requests.__version__,
+    platform.python_implementation(),
+    platform.python_version(),
+)
+
 
 # These are the "default colors" listed when creating a label via GitHub's web
 # UI as of 2023-09-24:
@@ -100,6 +110,7 @@ class Client:
         self.session = requests.Session()
         self.session.headers["Accept"] = "application/vnd.github+json"
         self.session.headers["Authorization"] = f"bearer {token}"
+        self.session.headers["User-Agent"] = USER_AGENT
         self.session.headers["X-GitHub-Api-Version"] = "2022-11-28"
         log.info("Fetching current milestones for %s ...", self.repo)
         for ms in self.paginate(self.milestone_url):
