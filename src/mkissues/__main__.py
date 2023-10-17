@@ -2,7 +2,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 import shutil
-from typing import IO
 import click
 from ghrepo import GHRepo, get_local_repo
 from ghtoken import get_ghtoken
@@ -41,6 +40,14 @@ class GHRepoParam(click.ParamType):
     "--version",
     message="%(prog)s %(version)s",
 )
+@click.option("--delete", is_flag=True, help="Delete files after processing")
+@click.option(
+    "--done-dir",
+    type=click.Path(
+        exists=False, file_okay=False, dir_okay=True, writable=True, path_type=Path
+    ),
+    help="Move processed files to the given directory  [default: DONE]",
+)
 @click.option(
     "-R",
     "--repository",
@@ -49,13 +56,21 @@ class GHRepoParam(click.ParamType):
     help="Create issues in the specified GitHub repository",
     show_default="local repository",
 )
-@click.argument("files", type=click.File(encoding="utf-8"), nargs=-1)
-def main(repository: GHRepo, files: tuple[IO[str], ...]) -> None:
+@click.argument(
+    "files",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
+    nargs=-1,
+)
+def main(
+    repository: GHRepo, files: tuple[Path, ...], delete: bool, done_dir: Path | None
+) -> None:
     """
     Create GitHub issues from text files.
 
     Visit <https://github.com/jwodder/mkissues> for more information.
     """
+    if delete and done_dir is not None:
+        raise click.UsageError("--delete and --done-dir are mutually exclusive")
     logging.basicConfig(
         format="[%(levelname)-8s] %(message)s",
         level=logging.INFO,
@@ -64,12 +79,12 @@ def main(repository: GHRepo, files: tuple[IO[str], ...]) -> None:
     hp.add_field("Title", required=True)
     hp.add_field("Milestone", default=None)
     hp.add_field("Labels", type=parse_labels, default=())
-    done_dir = Path("DONE")
-    done_dir.mkdir(parents=True, exist_ok=True)
+    if done_dir is not None:
+        done_dir.mkdir(parents=True, exist_ok=True)
     with Client(repo=repository, token=get_ghtoken()) as client:
-        for fp in files:
-            log.info("Processing %s ...", fp.name)
-            with fp:
+        for p in files:
+            log.info("Processing %s ...", p)
+            with p.open(encoding="utf-8") as fp:
                 data = hp.parse(fp)
             if data["Milestone"] is not None:
                 client.ensure_milestone(data["Milestone"])
@@ -81,7 +96,12 @@ def main(repository: GHRepo, files: tuple[IO[str], ...]) -> None:
                 labels=data["Labels"],
                 milestone=data["Milestone"],
             )
-            shutil.move(fp.name, done_dir)
+            if done_dir is not None:
+                log.info("Moving %s to %s", p, done_dir)
+                shutil.move(p, done_dir)
+            else:
+                log.info("Deleting %s", p)
+                p.unlink()
 
 
 def parse_labels(s: str) -> list[str]:

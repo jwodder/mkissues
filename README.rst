@@ -38,8 +38,8 @@ Usage
 line; see "`File Format`_" below.  Issues can be created with specific labels
 and/or milestones; if a file specifies a label or milestone that does not yet
 exist in the repository, the label or milestone is created.  After an issue is
-created, its file is moved to a directory named `DONE/` in the current
-directory.
+created, its file is either moved to a separate directory or deleted, depending
+on the options passed to the ``mkissues`` command.
 
 By default, ``mkissues`` creates issues in the GitHub repository listed as the
 ``origin`` remote for the Git repository in the current directory; a different
@@ -68,6 +68,18 @@ an error.
 
 Options
 -------
+
+--delete                        Delete each input file after processing.
+
+                                This option is mutually exclusive with
+                                ``--done-dir``.
+
+--done-dir DIR                  Move each input file to the given directory
+                                after processing.  This is the default
+                                behavior.  [default directory: ``DONE/``]
+
+                                This option is mutually exclusive with
+                                ``--delete``.
 
 -R SPEC, --repository SPEC      Operate on the specified GitHub repository.  A
                                 repository can be specified in the form
