@@ -7,6 +7,7 @@ import click
 from ghrepo import GHRepo, get_local_repo
 from ghtoken import get_ghtoken
 from headerparser import HeaderParser
+from . import __version__
 from .client import Client
 
 
@@ -31,7 +32,13 @@ class GHRepoParam(click.ParamType):
         return "OWNER/NAME"
 
 
-@click.command()
+@click.command(context_settings={"help_option_names": ["-h", "--help"]})
+@click.version_option(
+    __version__,
+    "-V",
+    "--version",
+    message="%(prog)s %(version)s",
+)
 @click.option(
     "-R",
     "--repository",
