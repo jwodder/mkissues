@@ -64,6 +64,8 @@ def main(
     """
     if delete and done_dir is not None:
         raise click.UsageError("--delete and --done-dir are mutually exclusive")
+    elif not delete and done_dir is None:
+        done_dir = Path("DONE")
     logging.basicConfig(
         format="[%(levelname)-8s] %(message)s",
         level=log_level,
@@ -98,6 +100,7 @@ def main(
                 log.info("Moving %s to %s", p, done_dir)
                 shutil.move(p, done_dir)
             else:
+                assert delete
                 log.info("Deleting %s", p)
                 p.unlink()
 
