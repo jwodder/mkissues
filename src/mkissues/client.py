@@ -143,7 +143,7 @@ class IssueMaker:
         log.info("Creating issue %r in %s", title, self.repo)
         payload = {
             "title": title,
-            "body": body,
+            "body": body.rstrip(),
             "labels": labels,
             "milestone": milestone,
         }
