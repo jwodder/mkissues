@@ -1,26 +1,12 @@
 from __future__ import annotations
-from collections.abc import Iterator
-from dataclasses import InitVar, dataclass, field
-import json
+from dataclasses import dataclass, field
 import logging
-import platform
 import random
-from types import TracebackType
-from typing import Any
 from ghrepo import GHRepo
-import requests
+import ghreq
 from . import __url__, __version__
 
 log = logging.getLogger(__name__)
-
-USER_AGENT = "mkissues/{} ({}) requests/{} {}/{}".format(
-    __version__,
-    __url__,
-    requests.__version__,
-    platform.python_implementation(),
-    platform.python_version(),
-)
-
 
 # These are the "default colors" listed when creating a label via GitHub's web
 # UI as of 2023-09-24:
@@ -57,51 +43,15 @@ class ICaseSet:
         return s.lower() in self.data
 
 
-@dataclass
-class Client:
-    token: InitVar[str]
-    session: requests.Session = field(init=False)
-
-    def __post_init__(self, token: str) -> None:
-        self.session = requests.Session()
-        self.session.headers["Accept"] = "application/vnd.github+json"
-        self.session.headers["Authorization"] = f"bearer {token}"
-        self.session.headers["User-Agent"] = USER_AGENT
-        self.session.headers["X-GitHub-Api-Version"] = "2022-11-28"
-
-    def __enter__(self) -> Client:
-        return self
-
-    def __exit__(
-        self,
-        _exc_type: type[BaseException] | None,
-        _exc_val: BaseException | None,
-        _exc_tb: TracebackType | None,
-    ) -> None:
-        self.session.close()
-
-    def paginate(self, url: str) -> Iterator:
-        while True:
-            r = self.session.get(url)
-            if not r.ok:
-                raise PrettyHTTPError(r)
-            yield from r.json()
-            url2 = r.links.get("next", {}).get("url")
-            if url2 is None:
-                return
-            url = url2
-
-    def post(self, url: str, payload: Any) -> Any:
-        r = self.session.post(url, json=payload)
-        if not r.ok:
-            raise PrettyHTTPError(r)
-        return r.json()
+class Client(ghreq.Client):
+    def __init__(self, token: str) -> None:
+        super().__init__(
+            token=token,
+            user_agent=ghreq.make_user_agent("mkissues", __version__, url=__url__),
+        )
 
     def get_auth_user(self) -> str:
-        r = self.session.get("https://api.github.com/user")
-        if not r.ok:
-            raise PrettyHTTPError(r)
-        login = r.json()["login"]
+        login = self.get("/user")["login"]
         assert isinstance(login, str)
         return login
 
@@ -149,24 +99,3 @@ class IssueMaker:
         }
         r = self.client.post(f"{self.repo.api_url}/issues", payload)
         log.info("New issue at: %s", r["url"])
-
-
-@dataclass
-class PrettyHTTPError(Exception):
-    response: requests.Response
-
-    def __str__(self) -> str:
-        if 400 <= self.response.status_code < 500:
-            msg = "{0.status_code} Client Error: {0.reason} for URL: {0.url}\n"
-        elif 500 <= self.response.status_code < 600:
-            msg = "{0.status_code} Server Error: {0.reason} for URL: {0.url}\n"
-        else:
-            msg = "{0.status_code} Unknown Error: {0.reason} for URL: {0.url}\n"
-        msg = msg.format(self.response)
-        try:
-            resp = self.response.json()
-        except ValueError:
-            msg += self.response.text
-        else:
-            msg += json.dumps(resp, indent=4)
-        return msg
