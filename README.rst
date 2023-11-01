@@ -32,7 +32,7 @@ Usage
 
 ::
 
-    mkissues [<options>] [<files>]
+    mkissues [<options>] [<file> ...]
 
 ``mkissues`` creates a GitHub issue from each file specified on the command
 line; see "`File Format`_" below.  Issues can be created with specific labels
@@ -90,7 +90,7 @@ Options
 -R SPEC, --repository SPEC      Operate on the specified GitHub repository.  A
                                 repository can be specified in the form
                                 ``OWNER/NAME`` (or, when ``OWNER`` is the
-                                authenticating user, just ``NAME``) or as a
+                                authenticated user, just ``NAME``) or as a
                                 GitHub repository URL.
 
 Authentication
