@@ -57,9 +57,9 @@ class Client(ghreq.Client):
 
     def get_issue_maker(self, repo: GHRepo) -> IssueMaker:
         log.debug("Fetching current milestones for %s ...", repo)
-        milestones = set()
+        milestones = {}
         for ms in self.paginate(f"{repo.api_url}/milestones"):
-            milestones.add(ms["title"])
+            milestones[ms["title"]] = ms["number"]
         log.debug("Fetching current labels for %s ...", repo)
         labels = ICaseSet()
         for lbl in self.paginate(f"{repo.api_url}/labels"):
@@ -71,14 +71,15 @@ class Client(ghreq.Client):
 class IssueMaker:
     client: Client
     repo: GHRepo
-    milestones: set[str]
+    milestones: dict[str, int]
     labels: ICaseSet
 
-    def ensure_milestone(self, title: str) -> None:
+    def ensure_milestone(self, title: str) -> int:
         if title not in self.milestones:
             log.info("Creating milestone %r in %s", title, self.repo)
-            self.client.post(f"{self.repo.api_url}/milestones", {"title": title})
-            self.milestones.add(title)
+            data = self.client.post(f"{self.repo.api_url}/milestones", {"title": title})
+            self.milestones[title] = data["number"]
+        return self.milestones[title]
 
     def ensure_label(self, name: str) -> None:
         if name not in self.labels:
@@ -88,7 +89,7 @@ class IssueMaker:
             self.labels.add(name)
 
     def create_issue(
-        self, title: str, body: str, labels: list[str], milestone: str | None
+        self, title: str, body: str, labels: list[str], milestone: int | None
     ) -> None:
         log.info("Creating issue %r in %s", title, self.repo)
         payload = {

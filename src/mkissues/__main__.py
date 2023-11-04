@@ -87,14 +87,16 @@ def main(
             with p.open(encoding="utf-8") as fp:
                 data = hp.parse(fp)
             if data["Milestone"] is not None:
-                issue_maker.ensure_milestone(data["Milestone"])
+                ms = issue_maker.ensure_milestone(data["Milestone"])
+            else:
+                ms = None
             for lbl in data["Labels"]:
                 issue_maker.ensure_label(lbl)
             issue_maker.create_issue(
                 title=data["Title"],
                 body=data.body or "",
                 labels=data["Labels"],
-                milestone=data["Milestone"],
+                milestone=ms,
             )
             if done_dir is not None:
                 log.info("Moving %s to %s", p, done_dir)
