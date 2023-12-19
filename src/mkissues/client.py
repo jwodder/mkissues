@@ -99,4 +99,4 @@ class IssueMaker:
             "milestone": milestone,
         }
         r = self.client.post(f"{self.repo.api_url}/issues", payload)
-        log.info("New issue at: %s", r["url"])
+        log.info("New issue at: %s", r["html_url"])
