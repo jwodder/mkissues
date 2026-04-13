@@ -35,7 +35,7 @@ classifiers = [
 
 dependencies = [
     "click ~= 8.0",
-    "click-loglevel ~= 0.5",
+    "click-loglevel ~= 0.7",
     "ghrepo ~= 0.7",
     "ghreq ~= 0.1",
     "ghtoken ~= 0.1",
